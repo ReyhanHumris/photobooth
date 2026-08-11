@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Webcam from 'react-webcam';
 import { toPng } from 'html-to-image';
 import confetti from 'canvas-confetti';
@@ -37,6 +37,9 @@ export default function App() {
   // Photo States (3 Foto Milik Sendiri & 3 Foto Milik Teman)
   const [myPhotos, setMyPhotos] = useState([]);
   const [friendPhotos, setFriendPhotos] = useState([]);
+
+  // Swap posisi foto per grid di akhir
+  const [swapLayout, setSwapLayout] = useState(false);
 
   const [countdown, setCountdown] = useState(null);
   const [selectedFrame, setSelectedFrame] = useState(FRAMES[0]);
@@ -104,8 +107,8 @@ export default function App() {
   // Menerima Event / Instruksi Real-time dari Device Teman
   const listenDataEvents = (conn) => {
     conn.on('data', (data) => {
-      if (data.type === 'START_SESSION') {
-        runCaptureSequence(data.timer);
+      if (data.type === 'TRIGGER_SINGLE_SHOT') {
+        runSingleShotSequence(data.timer);
       } else if (data.type === 'PHOTO_SHOT') {
         setFriendPhotos((prev) => [...prev, data.image]);
       } else if (data.type === 'RESET_PHOTOS') {
@@ -122,58 +125,45 @@ export default function App() {
     }
   }, [connectedFriend]);
 
-  // Ambil Foto dari Kamera Sendiri
-  const captureLocalPhoto = () => {
+  // Ambil Foto Single Lokal & Kirim ke Teman
+  const executeCapture = () => {
     if (webcamRef.current) {
       const imgSrc = webcamRef.current.getScreenshot();
       setMyPhotos((prev) => [...prev, imgSrc]);
 
-      // Kirim hasil jepretan ke device teman
       if (dataConn) {
         dataConn.send({ type: 'PHOTO_SHOT', image: imgSrc });
       }
     }
   };
 
-  // Sesi Pengambilan 3 Foto Berturut-turut (Sync di 2 Device)
-  const runCaptureSequence = (delay) => {
+  // Sesi Pengambilan 1 Foto Berdasarkan Timer
+  const runSingleShotSequence = (delay) => {
     setIsCapturing(true);
-    let currentShot = 0;
+    let count = delay;
+    setCountdown(count);
 
-    const takeShotCycle = () => {
-      let count = delay;
-      setCountdown(count);
-
-      const interval = setInterval(() => {
-        count -= 1;
-        if (count > 0) {
-          setCountdown(count);
-        } else {
-          clearInterval(interval);
-          setCountdown(null);
-          captureLocalPhoto();
-
-          currentShot += 1;
-          if (currentShot < 3) {
-            setTimeout(takeShotCycle, 1000);
-          } else {
-            setIsCapturing(false);
-          }
-        }
-      }, 1000);
-    };
-
-    takeShotCycle();
+    const interval = setInterval(() => {
+      count -= 1;
+      if (count > 0) {
+        setCountdown(count);
+      } else {
+        clearInterval(interval);
+        setCountdown(null);
+        executeCapture();
+        setIsCapturing(false);
+      }
+    }, 1000);
   };
 
-  // Pemicu Pengambilan Foto Bersama dari Tombol Utama
-  const handleStartBothSession = () => {
+  // Pemicu Foto Single dari Host (Setiap kali tombol ditekan)
+  const handleHostTakeShot = () => {
     if (myPhotos.length >= 3 || isCapturing) return;
 
     if (dataConn) {
-      dataConn.send({ type: 'START_SESSION', timer: timerDelay });
+      dataConn.send({ type: 'TRIGGER_SINGLE_SHOT', timer: timerDelay });
     }
-    runCaptureSequence(timerDelay);
+    runSingleShotSequence(timerDelay);
   };
 
   // Reset Sesi Foto Bersama
@@ -367,8 +357,8 @@ export default function App() {
                 <div className="flex items-center gap-2">
                   <span className="material-symbols-outlined text-2xl text-on-primary-container">groups</span>
                   <div>
-                    <h4 className="font-bold text-sm text-on-primary-container">Dual Multi-Device Studio (Sync 6-Grid)</h4>
-                    <p className="text-xs text-on-surface-variant">Atur username, hubungkan ID room, lalu klik sekali untuk foto berdua!</p>
+                    <h4 className="font-bold text-sm text-on-primary-container">Dual Multi-Device Studio (Manual Trigger)</h4>
+                    <p className="text-xs text-on-surface-variant">Foto diambil satu per satu per instruksi Host, tata letak diatur di akhir!</p>
                   </div>
                 </div>
 
@@ -376,15 +366,14 @@ export default function App() {
                   <div className="flex flex-col gap-1">
                     <label className="text-[10px] font-bold uppercase text-on-surface-variant">1. Username Anda</label>
                     <div className="flex gap-2">
-                        {/* Input Username */}
-                        <input
+                      <input
                         type="text"
                         placeholder="Contoh: Raihaan"
                         value={username}
                         disabled={!!myPeerId}
                         onChange={(e) => setUsername(e.target.value)}
                         className="w-full px-3 py-1.5 border-2 border-inverse-surface rounded-lg text-xs font-bold bg-[#2c3041] text-white placeholder:text-stone-400"
-                        />
+                      />
                       <button
                         onClick={() => initPeer(username)}
                         disabled={!!myPeerId}
@@ -398,14 +387,13 @@ export default function App() {
                   <div className="flex flex-col gap-1">
                     <label className="text-[10px] font-bold uppercase text-on-surface-variant">2. ID Room Teman</label>
                     <form onSubmit={connectToFriend} className="flex gap-2">
-                        {/* Input ID Room Teman */}
-                        <input
+                      <input
                         type="text"
                         placeholder="Tempel ID Room Teman"
                         value={targetRoomCode}
                         onChange={(e) => setTargetRoomCode(e.target.value)}
                         className="w-full px-3 py-1.5 border-2 border-inverse-surface rounded-lg text-xs font-bold bg-[#2c3041] text-white placeholder:text-stone-400"
-                        />
+                      />
                       <button
                         type="submit"
                         className="px-3 py-1.5 bg-secondary-container text-on-secondary-container rounded-lg border-2 border-inverse-surface text-xs font-bold"
@@ -418,12 +406,12 @@ export default function App() {
 
                 {myPeerId && (
                   <div className="flex items-center justify-between bg-surface-container-high px-3 py-2 rounded-xl border-2 border-inverse-surface">
-                    <span className="text-xs  font-bold text-on-surface">
+                    <span className="text-xs font-bold text-on-surface">
                       ID Room Anda: <span className="text-primary font-mono select-all underline">{myPeerId}</span>
                     </span>
                     <button
                       onClick={() => navigator.clipboard.writeText(myPeerId)}
-                     className="w-full px-3 py-1.5 border-2 border-inverse-surface rounded-lg text-xs font-bold bg-[#2c3041] text-white placeholder:text-stone-400"
+                      className="px-3 py-1 border-2 border-inverse-surface rounded-lg text-xs font-bold bg-[#2c3041] text-white"
                     >
                       Salin ID
                     </button>
@@ -481,7 +469,7 @@ export default function App() {
                   )}
                 </div>
 
-                {/* CONTROLS BAR */}
+                {/* CONTROLS BAR MANUAL TRIGGER */}
                 <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-1 bg-surface-container p-1 rounded-xl border-2 border-inverse-surface">
                     <span className="material-symbols-outlined text-sm ml-2 text-on-surface">timer</span>
@@ -498,14 +486,14 @@ export default function App() {
                     ))}
                   </div>
 
-                  {/* Tombol Eksekusi Foto Sinkron Berdua */}
+                  {/* Tombol Ambil Foto Bertahap (Satu Per Satu) */}
                   <button
-                    onClick={handleStartBothSession}
+                    onClick={handleHostTakeShot}
                     disabled={isCapturing || myPhotos.length >= 3}
                     className="flex items-center gap-2 bg-primary text-white disabled:opacity-50 font-bold px-6 py-3 rounded-2xl border-2 border-inverse-surface sticker-shadow active-sticker-shadow transition-all"
                   >
                     <span className="material-symbols-outlined">photo_camera</span>
-                    {myPhotos.length >= 3 ? 'Frame Penuh' : 'Mulai Foto Bersama'}
+                    {myPhotos.length >= 3 ? '3 Foto Selesai' : `Ambil Foto Ke-${myPhotos.length + 1}`}
                   </button>
 
                   <button
@@ -518,17 +506,66 @@ export default function App() {
                 </div>
               </div>
 
-              {/* FILTER SELECTOR */}
-              <div className="bg-surface-container-lowest p-4 rounded-2xl border-2 border-inverse-surface sticker-shadow">
-                <h4 className="text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-1 text-on-surface">
-                  <span className="material-symbols-outlined text-sm">auto_awesome</span> Pilih Filter ({FILTERS.length})
-                </h4>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {/* GALERI PRATINJAU HASIL FOTO REAL-TIME */}
+              <div className="bg-surface-container-lowest p-4 rounded-2xl border-2 border-inverse-surface sticker-shadow flex flex-col gap-3">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-on-surface">Hasil Jepretan Real-Time</h4>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Pratinjau Foto Anda */}
+                  <div className="flex flex-col gap-2">
+                    <span className="text-[10px] font-bold uppercase text-primary">Foto Anda ({myPhotos.length}/3)</span>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[0, 1, 2].map((i) => (
+                        <div key={i} className="aspect-[4/3] bg-surface-container border border-inverse-surface rounded-lg overflow-hidden flex items-center justify-center">
+                          {myPhotos[i] ? <img src={myPhotos[i]} alt="My shot" className="w-full h-full object-cover" /> : <span className="text-[9px] opacity-30 font-bold"># {i + 1}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Pratinjau Foto Teman */}
+                  <div className="flex flex-col gap-2">
+                    <span className="text-[10px] font-bold uppercase text-secondary font-mono">Foto {connectedFriend?.name || 'Teman'} ({friendPhotos.length}/3)</span>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[0, 1, 2].map((i) => (
+                        <div key={i} className="aspect-[4/3] bg-surface-container border border-inverse-surface rounded-lg overflow-hidden flex items-center justify-center">
+                          {friendPhotos[i] ? <img src={friendPhotos[i]} alt="Friend shot" className="w-full h-full object-cover" /> : <span className="text-[9px] opacity-30 font-bold"># {i + 1}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            {/* AREA KANAN: PENATAAN TATA LETAK & FRAME DI AKHIR SESI */}
+            <div className="lg:col-span-5 flex flex-col items-center gap-4">
+              
+              {/* OPSI PENGATURAN FILTER & LAYOUT */}
+              <div className="w-full bg-surface-container-lowest p-4 rounded-2xl border-2 border-inverse-surface sticker-shadow flex flex-col gap-3">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-on-surface">Atur Filter & Frame</h4>
+                
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {FRAMES.map((f) => (
+                    <button
+                      key={f.id}
+                      onClick={() => setSelectedFrame(f)}
+                      className={`whitespace-nowrap px-3 py-1.5 text-xs font-bold rounded-lg border-2 border-inverse-surface transition-all ${
+                        selectedFrame.id === f.id ? 'bg-primary-container text-on-surface' : 'bg-surface text-on-surface'
+                      }`}
+                    >
+                      {f.name}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-3 gap-1">
                   {FILTERS.map((f) => (
                     <button
                       key={f.id}
                       onClick={() => setSelectedFilter(f)}
-                      className={`py-2 px-2 text-xs font-bold rounded-xl border-2 border-inverse-surface transition-all ${
+                      className={`py-1 text-[10px] font-bold rounded border border-inverse-surface transition-all ${
                         selectedFilter.id === f.id ? 'bg-secondary-container text-on-secondary-container' : 'bg-surface text-on-surface'
                       }`}
                     >
@@ -536,27 +573,16 @@ export default function App() {
                     </button>
                   ))}
                 </div>
-              </div>
-            </div>
 
-            {/* AREA KANAN: HASIL FOTO STRIP DUAL 6-GRID */}
-            <div className="lg:col-span-5 flex flex-col items-center gap-4">
-              
-              <div className="w-full flex gap-2 overflow-x-auto pb-2">
-                {FRAMES.map((f) => (
-                  <button
-                    key={f.id}
-                    onClick={() => setSelectedFrame(f)}
-                    className={`whitespace-nowrap px-4 py-2 text-xs font-bold rounded-xl border-2 border-inverse-surface transition-all ${
-                      selectedFrame.id === f.id ? 'bg-primary-container text-on-surface sticker-shadow-sm' : 'bg-surface-container-lowest text-on-surface'
-                    }`}
-                  >
-                    {f.name}
-                  </button>
-                ))}
+                <button
+                  onClick={() => setSwapLayout(!swapLayout)}
+                  className="w-full py-2 bg-surface-container rounded-xl border-2 border-inverse-surface text-xs font-bold flex items-center justify-center gap-2 text-on-surface"
+                >
+                  <span className="material-symbols-outlined text-sm">swap_horiz</span> Tukar Posisi Grid (Kiri / Kanan)
+                </button>
               </div>
 
-              {/* PHOTO STRIP 6 GRID LAYOUT */}
+              {/* PHOTO STRIP 6-GRID FINAL */}
               <div
                 ref={stripRef}
                 className={`w-[320px] p-4 ${selectedFrame.bg} ${selectedFrame.border} border-4 rounded-xl sticker-shadow flex flex-col gap-3 transition-all`}
@@ -565,42 +591,35 @@ export default function App() {
                   {selectedFrame.headerText}
                 </div>
 
-                {/* Name Header */}
                 <div className="grid grid-cols-2 text-center text-[10px] font-bold border-b border-inverse-surface pb-1">
-                  <span>{username || 'Anda'}</span>
-                  <span>{connectedFriend?.name || 'Teman'}</span>
+                  <span>{!swapLayout ? (username || 'Anda') : (connectedFriend?.name || 'Teman')}</span>
+                  <span>{!swapLayout ? (connectedFriend?.name || 'Teman') : (username || 'Anda')}</span>
                 </div>
 
-                {/* Grid 3 Baris x 2 Kolom */}
-                {[0, 1, 2].map((idx) => (
-                  <div key={idx} className="grid grid-cols-2 gap-2">
-                    {/* Slot Foto Saya */}
-                    <div className="aspect-[4/3] bg-surface-container border-2 border-inverse-surface rounded-lg overflow-hidden flex items-center justify-center">
-                      {myPhotos[idx] ? (
-                        <img
-                          src={myPhotos[idx]}
-                          alt={`Foto Saya ${idx + 1}`}
-                          className={`w-full h-full object-cover ${selectedFilter.class}`}
-                        />
-                      ) : (
-                        <span className="text-[10px] font-bold opacity-30">Slot {idx + 1}</span>
-                      )}
-                    </div>
+                {[0, 1, 2].map((idx) => {
+                  const leftImg = !swapLayout ? myPhotos[idx] : friendPhotos[idx];
+                  const rightImg = !swapLayout ? friendPhotos[idx] : myPhotos[idx];
 
-                    {/* Slot Foto Teman */}
-                    <div className="aspect-[4/3] bg-surface-container border-2 border-inverse-surface rounded-lg overflow-hidden flex items-center justify-center">
-                      {friendPhotos[idx] ? (
-                        <img
-                          src={friendPhotos[idx]}
-                          alt={`Foto Teman ${idx + 1}`}
-                          className={`w-full h-full object-cover ${selectedFilter.class}`}
-                        />
-                      ) : (
-                        <span className="text-[10px] font-bold opacity-30">Slot {idx + 1}</span>
-                      )}
+                  return (
+                    <div key={idx} className="grid grid-cols-2 gap-2">
+                      <div className="aspect-[4/3] bg-surface-container border-2 border-inverse-surface rounded-lg overflow-hidden flex items-center justify-center">
+                        {leftImg ? (
+                          <img src={leftImg} alt={`Slot ${idx + 1}`} className={`w-full h-full object-cover ${selectedFilter.class}`} />
+                        ) : (
+                          <span className="text-[10px] font-bold opacity-30">Slot {idx + 1}</span>
+                        )}
+                      </div>
+
+                      <div className="aspect-[4/3] bg-surface-container border-2 border-inverse-surface rounded-lg overflow-hidden flex items-center justify-center">
+                        {rightImg ? (
+                          <img src={rightImg} alt={`Slot ${idx + 1}`} className={`w-full h-full object-cover ${selectedFilter.class}`} />
+                        ) : (
+                          <span className="text-[10px] font-bold opacity-30">Slot {idx + 1}</span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
 
                 <div className={`text-center text-[10px] font-bold ${selectedFrame.text} pt-1`}>
                   {new Date().toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' })}
@@ -609,7 +628,7 @@ export default function App() {
 
               <button
                 onClick={downloadStrip}
-                disabled={myPhotos.length === 0}
+                disabled={myPhotos.length < 3 || friendPhotos.length < 3}
                 className="w-[320px] flex items-center justify-center gap-2 bg-tertiary-container hover:bg-tertiary disabled:opacity-50 text-on-surface font-bold py-3 rounded-2xl border-2 border-inverse-surface sticker-shadow active-sticker-shadow transition-all"
               >
                 <span className="material-symbols-outlined">download</span> Download 6-Grid Strip PNG
@@ -662,7 +681,7 @@ export default function App() {
                 { step: '1', title: 'Buka Studio Kamera', desc: 'Izinkan akses webcam pada laptop atau smartphone Anda.' },
                 { step: '2', title: 'Atur Username & ID Room', desc: 'Isi username Anda, klik Set, lalu salin ID Room untuk diberikan ke teman.' },
                 { step: '3', title: 'Hubungkan Kamera Berdua', desc: 'Teman memasukkan ID Room Anda lalu klik Gabung untuk streaming berdua.' },
-                { step: '4', title: 'Ambil Foto Bersama & Download', desc: 'Klik Mulai Foto Bersama sekali, foto 6-grid otomatis tersimpan dan siap diunduh.' },
+                { step: '4', title: 'Ambil Foto Bertahap & Atur Frame', desc: 'Host mengeklik tombol ambil foto per satu slot. Sesuaikan bingkai dan posisi di akhir lalu unduh.' },
               ].map((item) => (
                 <div key={item.step} className="flex items-center gap-4 p-4 bg-surface-container-lowest border-2 border-inverse-surface rounded-2xl sticker-shadow">
                   <div className="w-12 h-12 rounded-full bg-primary-container border-2 border-inverse-surface flex items-center justify-center font-extrabold text-lg text-on-surface">
