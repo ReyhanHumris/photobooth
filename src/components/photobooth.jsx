@@ -418,12 +418,12 @@ export default function App() {
 
                 {myPeerId && (
                   <div className="flex items-center justify-between bg-surface-container-high px-3 py-2 rounded-xl border-2 border-inverse-surface">
-                    <span className="text-xs font-bold text-on-surface">
+                    <span className="text-xs  font-bold text-on-surface">
                       ID Room Anda: <span className="text-primary font-mono select-all underline">{myPeerId}</span>
                     </span>
                     <button
                       onClick={() => navigator.clipboard.writeText(myPeerId)}
-                      className="text-[10px] font-bold bg-surface px-2 py-1 rounded border border-inverse-surface"
+                     className="w-full px-3 py-1.5 border-2 border-inverse-surface rounded-lg text-xs font-bold bg-[#2c3041] text-white placeholder:text-stone-400"
                     >
                       Salin ID
                     </button>

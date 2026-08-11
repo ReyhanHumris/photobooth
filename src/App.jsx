@@ -316,7 +316,7 @@ export default function App() {
                         value={username}
                         disabled={!!myPeerId}
                         onChange={(e) => setUsername(e.target.value)}
-                        className="w-full px-3 py-1.5 border-2 border-inverse-surface rounded-lg text-xs font-bold"
+                        className="w-full px-3 py-1.5 border-2 border-inverse-surface rounded-lg text-xs font-bold bg-[#2c3041] text-white placeholder:text-stone-400"
                       />
                       <button
                         onClick={() => initPeer(username)}
@@ -337,7 +337,7 @@ export default function App() {
                         placeholder="Tempel ID Room Teman"
                         value={targetRoomCode}
                         onChange={(e) => setTargetRoomCode(e.target.value)}
-                        className="w-full px-3 py-1.5 border-2 border-inverse-surface rounded-lg text-xs font-bold"
+                        className="w-full px-3 py-1.5 border-2 border-inverse-surface rounded-lg text-xs font-bold bg-[#2c3041] text-white placeholder:text-stone-400"
                       />
                       <button
                         type="submit"
