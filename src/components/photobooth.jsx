@@ -376,14 +376,15 @@ export default function App() {
                   <div className="flex flex-col gap-1">
                     <label className="text-[10px] font-bold uppercase text-on-surface-variant">1. Username Anda</label>
                     <div className="flex gap-2">
-                      <input
+                        {/* Input Username */}
+                        <input
                         type="text"
                         placeholder="Contoh: Raihaan"
                         value={username}
                         disabled={!!myPeerId}
                         onChange={(e) => setUsername(e.target.value)}
-                        className="w-full px-3 py-1.5 border-2 border-inverse-surface rounded-lg text-xs font-bold"
-                      />
+                        className="w-full px-3 py-1.5 border-2 border-inverse-surface rounded-lg text-xs font-bold bg-[#2c3041] text-white placeholder:text-stone-400"
+                        />
                       <button
                         onClick={() => initPeer(username)}
                         disabled={!!myPeerId}
@@ -397,13 +398,14 @@ export default function App() {
                   <div className="flex flex-col gap-1">
                     <label className="text-[10px] font-bold uppercase text-on-surface-variant">2. ID Room Teman</label>
                     <form onSubmit={connectToFriend} className="flex gap-2">
-                      <input
+                        {/* Input ID Room Teman */}
+                        <input
                         type="text"
                         placeholder="Tempel ID Room Teman"
                         value={targetRoomCode}
                         onChange={(e) => setTargetRoomCode(e.target.value)}
-                        className="w-full px-3 py-1.5 border-2 border-inverse-surface rounded-lg text-xs font-bold"
-                      />
+                        className="w-full px-3 py-1.5 border-2 border-inverse-surface rounded-lg text-xs font-bold bg-[#2c3041] text-white placeholder:text-stone-400"
+                        />
                       <button
                         type="submit"
                         className="px-3 py-1.5 bg-secondary-container text-on-secondary-container rounded-lg border-2 border-inverse-surface text-xs font-bold"
