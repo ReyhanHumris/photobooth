@@ -43,6 +43,7 @@ export default function App() {
   const [selectedFilter, setSelectedFilter] = useState(FILTERS[0]);
   const [timerDelay, setTimerDelay] = useState(3);
   const [isCapturing, setIsCapturing] = useState(false);
+  const [isCameraMirrored, setIsCameraMirrored] = useState(false);
 
   // Multi-Device Room States
   const [username, setUsername] = useState('');
@@ -449,11 +450,10 @@ export default function App() {
                     <Webcam
                       audio={false}
                       ref={webcamRef}
-                      mirrored={false}
+                      mirrored={isCameraMirrored}
                       screenshotFormat="image/jpeg"
                       videoConstraints={{ facingMode: "user" }}
                       className={`w-full h-full object-cover ${selectedFilter.class}`}
-                      style={{ transform: 'scaleX(1)' }}
                     />
                     <span className="absolute bottom-2 left-2 bg-black/60 text-white px-2 py-0.5 rounded text-[10px] font-bold">
                       {username || 'Anda'}

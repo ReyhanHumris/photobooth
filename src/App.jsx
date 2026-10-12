@@ -46,6 +46,7 @@ export default function App() {
   const [selectedFilter, setSelectedFilter] = useState(FILTERS[0]);
   const [timerDelay, setTimerDelay] = useState(3);
   const [isCapturing, setIsCapturing] = useState(false);
+  const [isCameraMirrored, setIsCameraMirrored] = useState(false);
 
   // Multi-Device Room States
   const [username, setUsername] = useState('');
@@ -437,11 +438,10 @@ export default function App() {
                     <Webcam
                       audio={false}
                       ref={webcamRef}
-                      mirrored={false}
+                      mirrored={isCameraMirrored}
                       screenshotFormat="image/jpeg"
                       videoConstraints={{ facingMode: "user" }}
                       className={`w-full h-full object-cover ${selectedFilter.class}`}
-                      style={{ transform: 'scaleX(1)' }}
                     />
                     <span className="absolute bottom-2 left-2 bg-black/60 text-white px-2 py-0.5 rounded text-[10px] font-bold">
                       {username || 'Anda'}
@@ -486,6 +486,28 @@ export default function App() {
                         {sec}s
                       </button>
                     ))}
+                  </div>
+
+                  <div className="flex items-center gap-1 bg-surface-container p-1 rounded-xl border-2 border-inverse-surface">
+                    <button
+                      onClick={() => setIsCameraMirrored(true)}
+                      aria-pressed={isCameraMirrored}
+                      className={`flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-bold transition-all ${
+                        isCameraMirrored ? 'bg-secondary-container text-on-secondary-container' : 'text-on-surface opacity-60'
+                      }`}
+                    >
+                      <span className="material-symbols-outlined text-sm">flip</span>
+                      Mirror
+                    </button>
+                    <button
+                      onClick={() => setIsCameraMirrored(false)}
+                      aria-pressed={!isCameraMirrored}
+                      className={`px-3 py-2 rounded-lg text-xs font-bold transition-all ${
+                        !isCameraMirrored ? 'bg-primary-container text-on-surface' : 'text-on-surface opacity-60'
+                      }`}
+                    >
+                      Non-Mirror
+                    </button>
                   </div>
 
                   {/* Tombol Ambil Foto Bertahap (Satu Per Satu) */}
