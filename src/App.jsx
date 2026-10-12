@@ -437,9 +437,11 @@ export default function App() {
                     <Webcam
                       audio={false}
                       ref={webcamRef}
+                      mirrored={false}
                       screenshotFormat="image/jpeg"
                       videoConstraints={{ facingMode: "user" }}
                       className={`w-full h-full object-cover ${selectedFilter.class}`}
+                      style={{ transform: 'scaleX(1)' }}
                     />
                     <span className="absolute bottom-2 left-2 bg-black/60 text-white px-2 py-0.5 rounded text-[10px] font-bold">
                       {username || 'Anda'}
